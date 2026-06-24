@@ -83,5 +83,54 @@ class FastModuleTypeTest(test.TestCase):
     self.assertEqual(1, module.bar)
 
 
+  def testSetGetattributeCallbackRaisesOnNonCallable(self):
+    # Regression test: passing a non-callable must raise TypeError and must NOT
+    # corrupt the module's internal state (i.e. the previously-set callback must
+    # remain intact after the failed call).
+    module = ChildFastModule("test")
+    # Set a valid callback first so we can verify it survives the failed call.
+    FastModuleType.set_getattribute_callback(module,
+                                             ChildFastModule._getattribute1)
+    self.assertEqual(2, module.foo)
+
+    # Attempt to replace the callback with a non-callable – must raise TypeError.
+    with self.assertRaises(TypeError):
+      FastModuleType.set_getattribute_callback(module, "not_a_callable")
+
+    # The original callback must still be intact (no state corruption).
+    self.assertEqual(2, module.foo)
+
+  def testSetGetattrCallbackRaisesOnNonCallable(self):
+    # Regression test: passing a non-callable must raise TypeError and must NOT
+    # corrupt the module's internal state (i.e. the previously-set callback must
+    # remain intact after the failed call).
+    module = ChildFastModule("test")
+    FastModuleType.set_getattribute_callback(module,
+                                             ChildFastModule._getattribute2)
+    FastModuleType.set_getattr_callback(module, ChildFastModule._getattr)
+    self.assertEqual(3, module.foo)
+
+    # Attempt to replace the __getattr__ callback with a non-callable.
+    with self.assertRaises(TypeError):
+      FastModuleType.set_getattr_callback(module, 42)
+
+    # The original __getattr__ callback must still be intact.
+    self.assertEqual(3, module.foo)
+
+  def testSetGetattributeCallbackRaisesOnMissingArg(self):
+    # Regression test: calling set_getattribute_callback with no argument must
+    # raise TypeError without silently swallowing the exception.
+    module = ChildFastModule("test")
+    with self.assertRaises(TypeError):
+      FastModuleType.set_getattribute_callback(module)
+
+  def testSetGetattrCallbackRaisesOnMissingArg(self):
+    # Regression test: calling set_getattr_callback with no argument must
+    # raise TypeError without silently swallowing the exception.
+    module = ChildFastModule("test")
+    with self.assertRaises(TypeError):
+      FastModuleType.set_getattr_callback(module)
+
+
 if __name__ == "__main__":
   test.main()
